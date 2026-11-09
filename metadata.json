@@ -1,0 +1,6 @@
+{
+  "name": "Mobile Shop Customer Manager",
+  "description": "Register mobile shop customers, track phone purchases, warranty expiry, IMEI records, and activity logs with Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

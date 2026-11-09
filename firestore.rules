@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is Admin
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin';
+    }
+    
+    // Users collection: Any authenticated user can read profiles; user can write own profile or admin can manage
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Customers collection: Signed-in staff/admin can read, create, and update; only admin can delete
+    match /customers/{customerId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll(['customerId', 'name', 'mobile', 'createdAt', 'createdBy'])
+        && request.resource.data.name is string
+        && request.resource.data.mobile is string;
+      allow update: if isSignedIn()
+        && request.resource.data.name is string
+        && request.resource.data.mobile is string;
+      allow delete: if isAdmin();
+    }
+    
+    // Purchases collection: Signed-in staff/admin can read, create, and update; only admin can delete
+    match /purchases/{purchaseId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll(['purchaseId', 'customerId', 'brand', 'model', 'imei', 'price', 'purchaseDate'])
+        && request.resource.data.brand is string
+        && request.resource.data.model is string
+        && request.resource.data.imei is string;
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+    
+    // Activity logs: Signed-in users can read and write audit entries; logs cannot be deleted or mutated
+    match /activityLogs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll(['logId', 'userId', 'action', 'timestamp']);
+      allow update, delete: if false; // Immutable audit trail
+    }
+  }
+}
